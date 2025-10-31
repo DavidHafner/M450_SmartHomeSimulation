@@ -5,8 +5,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace SmartHomeSimulation.Tests;
 
 [TestClass]
-[TestSubject(typeof(BadWC))]
-public class BadWCTest
+[TestSubject(typeof(ZimmerMitMarkisensteuerung))]
+public class ZimmerMitMarkisensteuerungTest
 {
 
     [TestMethod]
