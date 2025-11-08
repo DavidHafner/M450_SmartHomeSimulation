@@ -15,11 +15,11 @@ namespace M320_SmartHome {
             this.wettersensor = wettersensor;
 
             zimmerList = new List<Zimmer>();
-            this.zimmerList.Add(new ZimmerMitHeizungsventil(new BadWC()));
+            this.zimmerList.Add(new ZimmerMitHeizungsventil(new ZimmerMitIntelligenterLüftung(new BadWC())));
             this.zimmerList.Add(new ZimmerMitJalousiesteuerung(new ZimmerMitHeizungsventil(new Kueche())));
-            this.zimmerList.Add(new ZimmerMitJalousiesteuerung(new ZimmerMitHeizungsventil(new Schlafzimmer())));
+            this.zimmerList.Add(new ZimmerMitJalousiesteuerung(new ZimmerMitHeizungsventil(new ZimmerMitIntelligenterLüftung(new Schlafzimmer()))));
             this.zimmerList.Add(new ZimmerMitJalousiesteuerung(new ZimmerMitMarkisensteuerung(new Wintergarten())));
-            this.zimmerList.Add(new ZimmerMitJalousiesteuerung(new ZimmerMitHeizungsventil(new Wohnzimmer())));
+            this.zimmerList.Add(new ZimmerMitJalousiesteuerung(new ZimmerMitHeizungsventil(new ZimmerMitIntelligenterLüftung(new Wohnzimmer()))));
         }
 
         public void SetTemperaturvorgabe(string zimmername, double temperaturvorgabe) {
