@@ -3,8 +3,9 @@ using System.IO;
 using JetBrains.Annotations;
 using M320_SmartHome;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SmartHomeSimulation.Tests.IsolationTests;
 
-namespace SmartHomeSimulation.Tests;
+namespace SmartHomeSimulation.Tests.IsolationTests;
 
 [TestClass]
 [TestSubject(typeof(ZimmerMitMarkisensteuerung))]

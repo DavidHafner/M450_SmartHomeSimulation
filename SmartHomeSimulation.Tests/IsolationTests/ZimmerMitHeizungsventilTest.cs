@@ -2,8 +2,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using M320_SmartHome;
 using System;
 using System.IO;
+using SmartHomeSimulation.Tests.IsolationTests;
 
-namespace SmartHomeSimulation.Tests
+namespace SmartHomeSimulation.Tests.IsolationTests
 {
     [TestClass]
     public class ZimmerMitHeizungsventilTests

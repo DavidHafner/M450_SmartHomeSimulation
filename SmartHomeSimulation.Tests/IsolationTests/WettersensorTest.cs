@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using M320_SmartHome;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SmartHomeSimulation.Tests;
+namespace SmartHomeSimulation.Tests.IsolationTests;
 
 [TestClass]
 [TestSubject(typeof(Wettersensor))]
@@ -26,7 +26,7 @@ public class WettersensorTest
     }
 
     [TestMethod]
-    public void GetWetterdaten_ShouldReturnValuesWithinExpectedRanges()
+    public void GetWetterdaten_SolltenInnerhalbDesAngegebenenWertebereichsSein()
     {
         // Arrange
         var sensor = new Wettersensor();
@@ -41,22 +41,23 @@ public class WettersensorTest
         Assert.IsTrue(wetterdaten.Windgeschwindigkeit >= 0 && wetterdaten.Windgeschwindigkeit <= 35,
             $"Wind speed out of range: {wetterdaten.Windgeschwindigkeit}");
 
-        // Regen should be a boolean, but we assert its validity anyway
+        // Checks if Regen is the correct datatype
         Assert.IsInstanceOfType(wetterdaten.Regen, typeof(bool));
     }
 
     [TestMethod]
-    public void GetWetterdaten_ShouldChangeTemperatureOverTime()
+    public void GetWetterdaten_SollteBeiJederMessungEinenAnderenWertZurückgeben()
     {
         // Arrange
         var sensor = new Wettersensor();
 
         // Act
         var first = sensor.GetWetterdaten();
-        var second = sensor.GetWetterdaten();
+        var second= sensor.GetWetterdaten();
+        var third = sensor.GetWetterdaten();
 
         // Assert (temperature should usually change)
-        Assert.AreNotEqual(first.Aussentemperatur, second.Aussentemperatur,
+        Assert.AreNotEqual(first.Aussentemperatur, second.Aussentemperatur, third.Aussentemperatur,
             "Temperature did not change between readings (possible but unlikely).");
     }
 
