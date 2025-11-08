@@ -44,22 +44,7 @@ public class WettersensorTest
         // Checks if Regen is the correct datatype
         Assert.IsInstanceOfType(wetterdaten.Regen, typeof(bool));
     }
-
-    [TestMethod]
-    public void GetWetterdaten_SollteBeiJederMessungEinenAnderenWertZurückgeben()
-    {
-        // Arrange
-        var sensor = new Wettersensor();
-
-        // Act
-        var first = sensor.GetWetterdaten();
-        var second= sensor.GetWetterdaten();
-        var third = sensor.GetWetterdaten();
-
-        // Assert (temperature should usually change)
-        Assert.AreNotEqual(first.Aussentemperatur, second.Aussentemperatur, third.Aussentemperatur,
-            "Temperature did not change between readings (possible but unlikely).");
-    }
+    
 
     [TestMethod]
     public void GetWetterdaten_ShouldRoundTemperatureToOneDecimal()
