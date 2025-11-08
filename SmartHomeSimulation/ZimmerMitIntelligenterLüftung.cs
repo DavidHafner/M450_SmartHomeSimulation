@@ -6,23 +6,6 @@ public class ZimmerMitIntelligenterLüftung:ZimmerMitAktor
     }
     public bool LüftungLäuft { get; set; }
     public override void VerarbeiteWetterdaten(Wetterdaten wetterdaten) {
-        // if(wetterdaten.Aussentemperatur < this.Zimmer.Temperaturvorgabe&&!wetterdaten.Regen) {
-        //     // Lüftung starten
-        //     if (this.LüftungLäuft) {
-        //         Console.WriteLine($"{this.Name}: Lüftung wird gestartet.");
-        //         LüftungLäuft = true;
-        //     }
-        // } else {
-        //     // Lüftung stoppen
-        //     if(!this.LüftungLäuft) {
-        //         if (this.Zimmer.PersonenImZimmer) {
-        //             Console.WriteLine($"{this.Name}: Lüftung kann nicht ausgeschaltet werden weil Personen im Zimmer sind.");
-        //         } else {
-        //             Console.WriteLine($"{this.Name}: Lüftung wird ausgeschaltet.");
-        //             LüftungLäuft = false;
-        //         }
-        //     }
-        // }
 
         if (Temperaturvorgabe > wetterdaten.Aussentemperatur)
         {
