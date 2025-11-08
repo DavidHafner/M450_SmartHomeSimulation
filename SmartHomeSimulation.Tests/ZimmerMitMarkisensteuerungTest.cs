@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using JetBrains.Annotations;
 using M320_SmartHome;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -8,147 +10,145 @@ namespace SmartHomeSimulation.Tests;
 [TestSubject(typeof(ZimmerMitMarkisensteuerung))]
 public class ZimmerMitMarkisensteuerungTest
 {
-
-    [TestMethod]
-    public class MockZimmer : Zimmer
-    {
-        public MockZimmer(string name) : base(name) { }
-
-        public bool VerarbeiteWetterdatenCalled { get; private set; }
-        public Wetterdaten LetzteWetterdaten { get; private set; }
-
-        public override double Temperaturvorgabe { get; set; }
-        public override bool PersonenImZimmer { get; set; }
-
-        public override void VerarbeiteWetterdaten(Wetterdaten wetterdaten)
-        {
-            VerarbeiteWetterdatenCalled = true;
-            LetzteWetterdaten = wetterdaten;
-        }
-    }
-
-    public class MockWetterdaten : Wetterdaten
-    {
-        public double Aussentemperatur { get; set; }
-        public bool Regen { get; set; }
-    }
-
-    // --- Actual test class ---
+[TestClass]
     public class ZimmerMitMarkisensteuerungTests
     {
-        [Fact]
-        public void Konstruktor_Soll_Zimmer_Setzen()
+        [TestMethod]
+        public void Markise_ShouldOpen_WhenCoolerThanVorgabe()
         {
             // Arrange
-            var baseZimmer = new MockZimmer("Terrasse");
+            var fakeZimmer = new FakeZimmer("Wohnzimmer") { Temperaturvorgabe = 25.0 };
+            var zimmer = new ZimmerMitMarkisensteuerung(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 20.0, Regen = false };
+
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
             // Act
-            var markZimmer = new ZimmerMitMarkisensteuerung(baseZimmer);
+            zimmer.VerarbeiteWetterdaten(wetter);
 
             // Assert
-            Assert.Equal("Terrasse", markZimmer.Name);
-            Assert.False(markZimmer.MarkiseOffen);
+            Assert.IsTrue(zimmer.MarkiseOffen, "Markise should open when it's cooler than target temperature.");
+            StringAssert.Contains(writer.ToString(), "Markise wird geöffnet");
         }
 
-        [Fact]
-        public void VerarbeiteWetterdaten_Soll_Markise_Oeffnen_Wenn_Kuehl()
+        [TestMethod]
+        public void Markise_ShouldClose_WhenHotterThanVorgabe_AndNoRain_AndIsOpen()
         {
             // Arrange
-            var baseZimmer = new MockZimmer("Balkon") { Temperaturvorgabe = 25.0 };
-            var markZimmer = new ZimmerMitMarkisensteuerung(baseZimmer);
-            var wetterdaten = new MockWetterdaten { Aussentemperatur = 15.0, Regen = false };
+            var fakeZimmer = new FakeZimmer("Küche") { Temperaturvorgabe = 20.0 };
+            var zimmer = new ZimmerMitMarkisensteuerung(fakeZimmer);
+            // Start with open markise
+            typeof(ZimmerMitMarkisensteuerung).GetProperty("MarkiseOffen")!.SetValue(zimmer, true);
+
+            var wetter = new Wetterdaten { Aussentemperatur = 30.0, Regen = false };
+
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
             // Act
-            markZimmer.VerarbeiteWetterdaten(wetterdaten);
+            zimmer.VerarbeiteWetterdaten(wetter);
 
             // Assert
-            Assert.True(markZimmer.MarkiseOffen);
+            Assert.IsFalse(zimmer.MarkiseOffen, "Markise should close when it's hotter and no rain.");
+            StringAssert.Contains(writer.ToString(), "Markise wird geschlossen");
         }
 
-        [Fact]
-        public void VerarbeiteWetterdaten_Soll_Markise_Schliessen_Wenn_Warm_und_Trocken()
+        [TestMethod]
+        public void Markise_ShouldNotClose_WhenHotterThanVorgabe_AndRaining()
         {
             // Arrange
-            var baseZimmer = new MockZimmer("Garten") { Temperaturvorgabe = 20.0 };
-            var markZimmer = new ZimmerMitMarkisensteuerung(baseZimmer);
+            var fakeZimmer = new FakeZimmer("Büro") { Temperaturvorgabe = 20.0 };
+            var zimmer = new ZimmerMitMarkisensteuerung(fakeZimmer);
+            // Start with open markise
+            typeof(ZimmerMitMarkisensteuerung).GetProperty("MarkiseOffen")!.SetValue(zimmer, true);
 
-            // Start: markise offen
-            markZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 15.0, Regen = false });
-            Assert.True(markZimmer.MarkiseOffen);
+            var wetter = new Wetterdaten { Aussentemperatur = 30.0, Regen = true };
+
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
             // Act
-            markZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 30.0, Regen = false });
+            zimmer.VerarbeiteWetterdaten(wetter);
 
             // Assert
-            Assert.False(markZimmer.MarkiseOffen);
+            Assert.IsTrue(zimmer.MarkiseOffen, "Markise should remain open because it is raining.");
+            StringAssert.Contains(writer.ToString(), "kann nicht geschlossen werden");
         }
 
-        [Fact]
-        public void VerarbeiteWetterdaten_Soll_Markise_Nicht_Schliessen_Wenn_Es_Regnet()
+        [TestMethod]
+        public void Markise_ShouldOpen_WhenHotterThanVorgabe_AndRaining_AndCurrentlyClosed()
         {
             // Arrange
-            var baseZimmer = new MockZimmer("Wintergarten") { Temperaturvorgabe = 20.0 };
-            var markZimmer = new ZimmerMitMarkisensteuerung(baseZimmer);
+            var fakeZimmer = new FakeZimmer("Terrasse") { Temperaturvorgabe = 22.0 };
+            var zimmer = new ZimmerMitMarkisensteuerung(fakeZimmer);
+            // Markise closed
+            typeof(ZimmerMitMarkisensteuerung).GetProperty("MarkiseOffen")!.SetValue(zimmer, false);
 
-            // Start: markise offen
-            markZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 15.0, Regen = false });
-            Assert.True(markZimmer.MarkiseOffen);
+            var wetter = new Wetterdaten { Aussentemperatur = 30.0, Regen = true };
+
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
             // Act
-            markZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 30.0, Regen = true });
+            zimmer.VerarbeiteWetterdaten(wetter);
 
             // Assert
-            Assert.True(markZimmer.MarkiseOffen); // stays open because of rain
+            Assert.IsTrue(zimmer.MarkiseOffen, "Markise should open when it's raining even if hot.");
+            StringAssert.Contains(writer.ToString(), "Markise wird geöffnet weils regnet");
         }
 
-        [Fact]
-        public void VerarbeiteWetterdaten_Soll_Markise_Oeffnen_Wenn_Es_Regnet_und_Sie_Geschlossen_Ist()
+        [TestMethod]
+        public void VerarbeiteWetterdaten_ShouldCallBaseZimmer()
         {
             // Arrange
-            var baseZimmer = new MockZimmer("Veranda") { Temperaturvorgabe = 20.0 };
-            var markZimmer = new ZimmerMitMarkisensteuerung(baseZimmer);
+            var fakeZimmer = new FakeZimmer("Schlafzimmer") { Temperaturvorgabe = 20.0 };
+            var zimmer = new ZimmerMitMarkisensteuerung(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 18.0, Regen = false };
 
-            // Ensure markise is closed
-            Assert.False(markZimmer.MarkiseOffen);
+            var originalOut = Console.Out;
+            var writer = new StringWriter();
+            Console.SetOut(writer);
 
-            // Act
-            markZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 30.0, Regen = true });
+            try
+            {
+                // Act
+                zimmer.VerarbeiteWetterdaten(wetter);
+            }
+            finally
+            {
+                Console.SetOut(originalOut); // ✅ restore safely
+                writer.Dispose();
+            }
 
             // Assert
-            Assert.True(markZimmer.MarkiseOffen);
+            Assert.IsTrue(fakeZimmer.VerarbeiteWetterdatenCalled, "Base VerarbeiteWetterdaten should be called.");
+            Assert.AreEqual(wetter, fakeZimmer.LetzteWetterdaten);
         }
 
-        [Fact]
-        public void VerarbeiteWetterdaten_Soll_Nicht_Erwiederholt_Oeffnen_Wenn_Bereits_Offen()
+        [TestMethod]
+        public void Markise_ShouldNotToggle_Unnecessarily()
         {
             // Arrange
-            var baseZimmer = new MockZimmer("Terrasse") { Temperaturvorgabe = 20.0 };
-            var markZimmer = new ZimmerMitMarkisensteuerung(baseZimmer);
-            var wetterdaten = new MockWetterdaten { Aussentemperatur = 10.0, Regen = false };
+            var fakeZimmer = new FakeZimmer("Balkon") { Temperaturvorgabe = 25.0 };
+            var zimmer = new ZimmerMitMarkisensteuerung(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 20.0, Regen = false };
 
-            // Act
-            markZimmer.VerarbeiteWetterdaten(wetterdaten);
-            Assert.True(markZimmer.MarkiseOffen);
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
-            // Act again (should remain open)
-            markZimmer.VerarbeiteWetterdaten(wetterdaten);
+            // Act — first call opens
+            zimmer.VerarbeiteWetterdaten(wetter);
+            string firstOutput = writer.ToString();
+            writer.GetStringBuilder().Clear();
 
-            // Assert
-            Assert.True(markZimmer.MarkiseOffen);
-        }
-
-        [Fact]
-        public void VerarbeiteWetterdaten_Soll_Base_VerarbeiteWetterdaten_Aufrufen()
-        {
-            // Arrange
-            var baseZimmer = new MockZimmer("Loggia") { Temperaturvorgabe = 20.0 };
-            var markZimmer = new ZimmerMitMarkisensteuerung(baseZimmer);
-            var wetterdaten = new MockWetterdaten { Aussentemperatur = 25.0, Regen = false };
-
-            // Act
-            markZimmer.VerarbeiteWetterdaten(wetterdaten);
+            // Act again — same conditions, should not reprint
+            zimmer.VerarbeiteWetterdaten(wetter);
+            string secondOutput = writer.ToString();
 
             // Assert
-            Assert.True(baseZimmer.VerarbeiteWetterdatenCalled);
+            Assert.IsTrue(firstOutput.Contains("Markise wird geöffnet"));
+            Assert.AreEqual(string.Empty, secondOutput.Trim(), "Should not output message if state unchanged.");
         }
     }
+}

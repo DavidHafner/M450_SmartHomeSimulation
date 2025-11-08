@@ -1,151 +1,145 @@
+using System;
+using System.IO;
 using JetBrains.Annotations;
 using M320_SmartHome;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SmartHomeSimulation.Tests;
-
-[TestClass]
-[TestSubject(typeof(ZimmerMitJalousiesteuerung))]
-public class ZimmerMitJalousiesteuerungTest
+namespace SmartHomeSimulation.Tests
 {
-
-    public MockZimmer(string name) : base(name) { }
-
-    public bool VerarbeiteWetterdatenCalled { get; private set; }
-    public Wetterdaten LetzteWetterdaten { get; private set; }
-
-    public override double Temperaturvorgabe { get; set; }
-    public override bool PersonenImZimmer { get; set; }
-
-    public override void VerarbeiteWetterdaten(Wetterdaten wetterdaten)
+    [TestClass]
+    public class ZimmerMitJalousiesteuerungTests
     {
-        VerarbeiteWetterdatenCalled = true;
-        LetzteWetterdaten = wetterdaten;
-    }
-}
-
-public class MockWetterdaten : Wetterdaten
-{
-    public double Aussentemperatur { get; set; }
-}
-
-// --- Tests for ZimmerMitJalousiesteuerung ---
-public class ZimmerMitJalousiesteuerungTests
-{
-    [Fact]
-    public void Konstruktor_Soll_Zimmer_Setzen()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("Wohnzimmer");
-
-        // Act
-        var jalZimmer = new ZimmerMitJalousiesteuerung(baseZimmer);
-
-        // Assert
-        Assert.Equal("Wohnzimmer", jalZimmer.Name);
-        Assert.False(jalZimmer.JalousieHeruntergefahren);
-    }
-
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Jalousie_Schliessen_Wenn_Warm_und_Keine_Personen()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("Schlafzimmer")
+        [TestMethod]
+        public void Jalousie_ShouldClose_WhenHotterThanVorgabe_AndNoPersonsInside()
         {
-            Temperaturvorgabe = 22.0,
-            PersonenImZimmer = false
-        };
-        var jalZimmer = new ZimmerMitJalousiesteuerung(baseZimmer);
-        var wetterdaten = new MockWetterdaten { Aussentemperatur = 30.0 };
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Wohnzimmer")
+            {
+                Temperaturvorgabe = 22.0,
+                PersonenImZimmer = false
+            };
+            var zimmer = new ZimmerMitJalousiesteuerung(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 30.0 };
 
-        // Act
-        jalZimmer.VerarbeiteWetterdaten(wetterdaten);
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
-        // Assert
-        Assert.True(jalZimmer.JalousieHeruntergefahren);
-        Assert.True(baseZimmer.VerarbeiteWetterdatenCalled);
-    }
+            // Act
+            zimmer.VerarbeiteWetterdaten(wetter);
 
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Jalousie_Nicht_Schliessen_Wenn_Personen_Im_Zimmer()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("B�ro")
+            // Assert
+            Assert.IsTrue(zimmer.JalousieHeruntergefahren, "Jalousie should close when it's hotter and no one is inside.");
+            StringAssert.Contains(writer.ToString(), "Jalousie wird geschlossen");
+        }
+
+        [TestMethod]
+        public void Jalousie_ShouldNotClose_WhenHotterThanVorgabe_ButPersonsInside()
         {
-            Temperaturvorgabe = 22.0,
-            PersonenImZimmer = true
-        };
-        var jalZimmer = new ZimmerMitJalousiesteuerung(baseZimmer);
-        var wetterdaten = new MockWetterdaten { Aussentemperatur = 30.0 };
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Küche")
+            {
+                Temperaturvorgabe = 20.0,
+                PersonenImZimmer = true
+            };
+            var zimmer = new ZimmerMitJalousiesteuerung(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 25.0 };
 
-        // Act
-        jalZimmer.VerarbeiteWetterdaten(wetterdaten);
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
-        // Assert
-        Assert.False(jalZimmer.JalousieHeruntergefahren);
-    }
+            // Act
+            zimmer.VerarbeiteWetterdaten(wetter);
 
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Jalousie_Oeffnen_Wenn_Kuehler_Wird()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("K�che")
+            // Assert
+            Assert.IsFalse(zimmer.JalousieHeruntergefahren, "Jalousie should not close if persons are inside.");
+            StringAssert.Contains(writer.ToString(), "kann nicht geschlossen werden");
+        }
+
+        [TestMethod]
+        public void Jalousie_ShouldOpen_WhenCoolerThanVorgabe()
         {
-            Temperaturvorgabe = 22.0,
-            PersonenImZimmer = false
-        };
-        var jalZimmer = new ZimmerMitJalousiesteuerung(baseZimmer);
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Schlafzimmer")
+            {
+                Temperaturvorgabe = 25.0,
+                PersonenImZimmer = false
+            };
+            var zimmer = new ZimmerMitJalousiesteuerung(fakeZimmer);
 
-        // Simulate: closed blinds first
-        jalZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 30.0 });
-        Assert.True(jalZimmer.JalousieHeruntergefahren);
+            // Simulate closed blinds
+            typeof(ZimmerMitJalousiesteuerung)
+                .GetProperty("JalousieHeruntergefahren")!
+                .SetValue(zimmer, true);
 
-        // Act: now it�s cooler
-        jalZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 15.0 });
+            var wetter = new Wetterdaten { Aussentemperatur = 15.0 };
 
-        // Assert
-        Assert.False(jalZimmer.JalousieHeruntergefahren);
-    }
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Nicht_Erwiederholt_Schliessen_Wenn_Bereits_Geschlossen()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("Bad")
+            // Act
+            zimmer.VerarbeiteWetterdaten(wetter);
+
+            // Assert
+            Assert.IsFalse(zimmer.JalousieHeruntergefahren, "Jalousie should open when it's cooler than the target temperature.");
+            StringAssert.Contains(writer.ToString(), "Jalousie wird geöffnet");
+        }
+
+        [TestMethod]
+        public void VerarbeiteWetterdaten_ShouldCallBaseZimmer()
         {
-            Temperaturvorgabe = 22.0,
-            PersonenImZimmer = false
-        };
-        var jalZimmer = new ZimmerMitJalousiesteuerung(baseZimmer);
-        var wetterdaten = new MockWetterdaten { Aussentemperatur = 30.0 };
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Büro")
+            {
+                Temperaturvorgabe = 23.0
+            };
+            var zimmer = new ZimmerMitJalousiesteuerung(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 28.0 };
+            var originalOut = Console.Out;
+            var writer = new StringWriter();
+            Console.SetOut(writer);
 
-        // Act: close once
-        jalZimmer.VerarbeiteWetterdaten(wetterdaten);
-        Assert.True(jalZimmer.JalousieHeruntergefahren);
+            try
+            {
+                // Act
+                zimmer.VerarbeiteWetterdaten(wetter);
+            }
+            finally
+            {
+                Console.SetOut(originalOut); // ✅ restore safely
+                writer.Dispose();
+            }
 
-        // Act again (should remain closed)
-        jalZimmer.VerarbeiteWetterdaten(wetterdaten);
+            // Assert
+            Assert.IsTrue(fakeZimmer.VerarbeiteWetterdatenCalled, "Base VerarbeiteWetterdaten should be called.");
+            Assert.AreEqual(wetter, fakeZimmer.LetzteWetterdaten);
+        }
 
-        // Assert
-        Assert.True(jalZimmer.JalousieHeruntergefahren);
-    }
-
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Nicht_Erwiederholt_Oeffnen_Wenn_Bereits_Offen()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("Flur")
+        [TestMethod]
+        public void Jalousie_ShouldNotToggle_WhenStateRemainsSame()
         {
-            Temperaturvorgabe = 22.0,
-            PersonenImZimmer = false
-        };
-        var jalZimmer = new ZimmerMitJalousiesteuerung(baseZimmer);
-        var wetterdaten = new MockWetterdaten { Aussentemperatur = 15.0 };
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Bad")
+            {
+                Temperaturvorgabe = 22.0,
+                PersonenImZimmer = false
+            };
+            var zimmer = new ZimmerMitJalousiesteuerung(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 30.0 };
 
-        // Act: already open (default)
-        jalZimmer.VerarbeiteWetterdaten(wetterdaten);
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
-        // Assert
-        Assert.False(jalZimmer.JalousieHeruntergefahren);
+            // Act
+            zimmer.VerarbeiteWetterdaten(wetter); // first — closes
+            string firstOutput = writer.ToString();
+            writer.GetStringBuilder().Clear();
+
+            zimmer.VerarbeiteWetterdaten(wetter); // second — should not change
+            string secondOutput = writer.ToString();
+
+            // Assert
+            Assert.IsTrue(firstOutput.Contains("Jalousie wird geschlossen"));
+            Assert.AreEqual(string.Empty, secondOutput.Trim(), "Should not reprint if Jalousie is already closed.");
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using JetBrains.Annotations;
 using M320_SmartHome;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -10,84 +11,68 @@ public class WettersensorTest
 {
 
     [TestMethod]
-    public void METHOD()
+    public void Constructor_ShouldInitializeCurrentTempWithinRange()
     {
-        [Fact]
-        public void Constructor_ShouldInitializeTemperatureWithinRange()
-        {
-            // Arrange & Act
-            var sensor = new Wettersensor();
+        // Arrange & Act
+        var sensor = new Wettersensor();
 
-            var wetterdaten = sensor.GetWetterdaten();
+        var wetterdaten = sensor.GetWetterdaten();
 
-            // Assert
-            Assert.InRange(wetterdaten.Aussentemperatur, -25, 35);
-        }
-
-        [Fact]
-        public void GetWetterdaten_ShouldReturnValidWindgeschwindigkeit()
-        {
-            // Arrange
-            var sensor = new Wettersensor();
-
-            // Act
-            var wetterdaten = sensor.GetWetterdaten();
-
-            // Assert
-            Assert.InRange(wetterdaten.Windgeschwindigkeit, 0, 35);
-        }
-
-        [Fact]
-        public void GetWetterdaten_ShouldReturnBooleanRegenValue()
-        {
-            // Arrange
-            var sensor = new Wettersensor();
-
-            // Act
-            var wetterdaten = sensor.GetWetterdaten();
-
-            // Assert
-            Assert.IsType<bool>(wetterdaten.Regen);
-        }
-
-        [Fact]
-        public void GetWetterdaten_ShouldReturnTemperatureWithinLimitsOverMultipleCalls()
-        {
-            // Arrange
-            var sensor = new Wettersensor();
-
-            // Act
-            for (int i = 0; i < 100; i++)
-            {
-                var wetterdaten = sensor.GetWetterdaten();
-
-                // Assert
-                Assert.InRange(wetterdaten.Aussentemperatur, -25, 35);
-            }
-        }
-
-        [Fact]
-        public void GetWetterdaten_ShouldChangeTemperatureOverTime()
-        {
-            // Arrange
-            var sensor = new Wettersensor();
-
-            var first = sensor.GetWetterdaten();
-            bool changed = false;
-
-            // Act
-            for (int i = 0; i < 10; i++)
-            {
-                var next = sensor.GetWetterdaten();
-                if (next.Aussentemperatur != first.Aussentemperatur)
-                {
-                    changed = true;
-                    break;
-                }
-            }
-
-            // Assert
-            Assert.True(changed, "Temperature should eventually change after several readings.");
-        }
+        // Assert
+        Assert.IsTrue(
+            wetterdaten.Aussentemperatur >= -25 && wetterdaten.Aussentemperatur <= 35,
+            $"Temperature out of range: {wetterdaten.Aussentemperatur}"
+        );
     }
+
+    [TestMethod]
+    public void GetWetterdaten_ShouldReturnValuesWithinExpectedRanges()
+    {
+        // Arrange
+        var sensor = new Wettersensor();
+
+        // Act
+        var wetterdaten = sensor.GetWetterdaten();
+
+        // Assert
+        Assert.IsTrue(wetterdaten.Aussentemperatur >= -25 && wetterdaten.Aussentemperatur <= 35,
+            $"Temperature out of range: {wetterdaten.Aussentemperatur}");
+
+        Assert.IsTrue(wetterdaten.Windgeschwindigkeit >= 0 && wetterdaten.Windgeschwindigkeit <= 35,
+            $"Wind speed out of range: {wetterdaten.Windgeschwindigkeit}");
+
+        // Regen should be a boolean, but we assert its validity anyway
+        Assert.IsInstanceOfType(wetterdaten.Regen, typeof(bool));
+    }
+
+    [TestMethod]
+    public void GetWetterdaten_ShouldChangeTemperatureOverTime()
+    {
+        // Arrange
+        var sensor = new Wettersensor();
+
+        // Act
+        var first = sensor.GetWetterdaten();
+        var second = sensor.GetWetterdaten();
+
+        // Assert (temperature should usually change)
+        Assert.AreNotEqual(first.Aussentemperatur, second.Aussentemperatur,
+            "Temperature did not change between readings (possible but unlikely).");
+    }
+
+    [TestMethod]
+    public void GetWetterdaten_ShouldRoundTemperatureToOneDecimal()
+    {
+        // Arrange
+        var sensor = new Wettersensor();
+
+        // Act
+        var wetterdaten = sensor.GetWetterdaten();
+
+        // Assert
+        double rounded = Math.Round(wetterdaten.Aussentemperatur, 1);
+        Assert.AreEqual(rounded, wetterdaten.Aussentemperatur,
+            "Temperature is not rounded to one decimal place.");
+    }
+
 }

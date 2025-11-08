@@ -1,122 +1,120 @@
-using JetBrains.Annotations;
-using M320_SmartHome;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using M320_SmartHome;
+using System;
+using System.IO;
 
-namespace SmartHomeSimulation.Tests;
-
-[TestClass]
-[TestSubject(typeof(ZimmerMitHeizungsventil))]
-public class ZimmerMitHeizungsventilTest
+namespace SmartHomeSimulation.Tests
 {
-
-    public MockZimmer(string name) : base(name) { }
-
-    public bool VerarbeiteWetterdatenCalled { get; private set; }
-    public Wetterdaten LetzteWetterdaten { get; private set; }
-
-    public override double Temperaturvorgabe { get; set; }
-    public override bool PersonenImZimmer { get; set; }
-
-    public override void VerarbeiteWetterdaten(Wetterdaten wetterdaten)
+    [TestClass]
+    public class ZimmerMitHeizungsventilTests
     {
-        VerarbeiteWetterdatenCalled = true;
-        LetzteWetterdaten = wetterdaten;
-    }
-}
+        [TestMethod]
+        public void Ventil_ShouldOpen_WhenAussentemperaturBelowVorgabe()
+        {
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Wohnzimmer") { Temperaturvorgabe = 22.0 };
+            var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 15.0 };
 
-public class MockWetterdaten : Wetterdaten
-{
-    public double Aussentemperatur { get; set; }
-}
+            // Act
+            zimmer.VerarbeiteWetterdaten(wetter);
 
-// --- Actual test class ---
-public class ZimmerMitHeizungsventilTests
-{
-    [Fact]
-    public void Konstruktor_Soll_Zimmer_Setzen()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("Wohnzimmer");
+            // Assert
+            Assert.IsTrue(zimmer.HeizungsventilOffen, "Ventil should open when it is colder than the target temperature.");
+        }
 
-        // Act
-        var heizZimmer = new ZimmerMitHeizungsventil(baseZimmer);
+        [TestMethod]
+        public void Ventil_ShouldClose_WhenAussentemperaturAboveVorgabe()
+        {
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Küche") { Temperaturvorgabe = 20.0 };
+            var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 25.0 };
 
-        // Assert
-        Assert.Equal("Wohnzimmer", heizZimmer.Name);
-        Assert.False(heizZimmer.HeizungsventilOffen);
-    }
+            // First, open the valve manually to simulate previous state
+            typeof(ZimmerMitHeizungsventil)
+                .GetProperty("HeizungsventilOffen")!
+                .SetValue(zimmer, true);
 
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Heizungsventil_Oeffnen_Wenn_Kalt()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("Schlafzimmer") { Temperaturvorgabe = 21.0 };
-        var heizZimmer = new ZimmerMitHeizungsventil(baseZimmer);
-        var wetterdaten = new MockWetterdaten { Aussentemperatur = 10.0 };
+            // Act
+            zimmer.VerarbeiteWetterdaten(wetter);
 
-        // Act
-        heizZimmer.VerarbeiteWetterdaten(wetterdaten);
+            // Assert
+            Assert.IsFalse(zimmer.HeizungsventilOffen, "Ventil should close when it is warmer than the target temperature.");
+        }
 
-        // Assert
-        Assert.True(heizZimmer.HeizungsventilOffen);
-        Assert.True(baseZimmer.VerarbeiteWetterdatenCalled);
-    }
+        [TestMethod]
+        public void Ventil_ShouldNotToggle_Unnecessarily()
+        {
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Bad") { Temperaturvorgabe = 20.0 };
+            var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 10.0 };
 
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Heizungsventil_Schliessen_Wenn_Warm()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("B�ro") { Temperaturvorgabe = 20.0 };
-        var heizZimmer = new ZimmerMitHeizungsventil(baseZimmer);
+            // Capture console output
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
-        // Simulate open valve first
-        heizZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 10.0 });
-        Assert.True(heizZimmer.HeizungsventilOffen);
+            // Act — first call opens the valve
+            zimmer.VerarbeiteWetterdaten(wetter);
+            string firstOutput = writer.ToString().Trim();
+            writer.GetStringBuilder().Clear();
 
-        // Act
-        heizZimmer.VerarbeiteWetterdaten(new MockWetterdaten { Aussentemperatur = 25.0 });
+            // Act again — same condition, should NOT print again
+            zimmer.VerarbeiteWetterdaten(wetter);
+            string secondOutput = writer.ToString().Trim();
 
-        // Assert
-        Assert.False(heizZimmer.HeizungsventilOffen);
-    }
+            // Assert
+            Assert.IsTrue(firstOutput.Contains("Heizungsventil wird geöffnet"));
+            Assert.AreEqual(string.Empty, secondOutput, "Should not print again if valve state stays the same.");
+        }
 
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Ventil_Nicht_Erwiederholt_Oeffnen_Wenn_Bereits_Offen()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("K�che") { Temperaturvorgabe = 20.0 };
-        var heizZimmer = new ZimmerMitHeizungsventil(baseZimmer);
-        var wetterdaten = new MockWetterdaten { Aussentemperatur = 10.0 };
+        [TestMethod]
+        public void VerarbeiteWetterdaten_ShouldCallBaseZimmer()
+        {
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Schlafzimmer") { Temperaturvorgabe = 22.0 };
+            var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
+            var wetter = new Wetterdaten { Aussentemperatur = 15.0 };
 
-        // Act
-        heizZimmer.VerarbeiteWetterdaten(wetterdaten);
-        Assert.True(heizZimmer.HeizungsventilOffen);
+            var originalOut = Console.Out;
+            var writer = new StringWriter();
+            Console.SetOut(writer);
+            
+            try
+            {
+                // Act
+                zimmer.VerarbeiteWetterdaten(wetter);
+            }
+            finally
+            {
+                Console.SetOut(originalOut); // ✅ restore safely
+                writer.Dispose();
+            }
+            // Assert
+            Assert.IsTrue(fakeZimmer.VerarbeiteWetterdatenCalled);
+            Assert.AreEqual(wetter, fakeZimmer.LetzteWetterdaten);
+        }
 
-        // Act again (should remain open)
-        heizZimmer.VerarbeiteWetterdaten(wetterdaten);
+        [TestMethod]
+        public void ConsoleOutput_ShouldMatchOpenAndCloseMessages()
+        {
+            // Arrange
+            var fakeZimmer = new FakeZimmer("Arbeitszimmer") { Temperaturvorgabe = 20.0 };
+            var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
 
-        // Assert
-        Assert.True(heizZimmer.HeizungsventilOffen);
-    }
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
 
-    [Fact]
-    public void VerarbeiteWetterdaten_Soll_Ventil_Nicht_Erwiederholt_Schliessen_Wenn_Bereits_Zu()
-    {
-        // Arrange
-        var baseZimmer = new MockZimmer("Bad") { Temperaturvorgabe = 20.0 };
-        var heizZimmer = new ZimmerMitHeizungsventil(baseZimmer);
-        var wetterdaten = new MockWetterdaten { Aussentemperatur = 25.0 };
+            // Act
+            zimmer.VerarbeiteWetterdaten(new Wetterdaten { Aussentemperatur = 10.0 }); // open
+            zimmer.VerarbeiteWetterdaten(new Wetterdaten { Aussentemperatur = 25.0 }); // close
 
-        // Act (valve initially closed)
-        heizZimmer.VerarbeiteWetterdaten(wetterdaten);
+            string output = writer.ToString();
 
-        // Assert
-        Assert.False(heizZimmer.HeizungsventilOffen);
-
-        // Act again (should remain closed)
-        heizZimmer.VerarbeiteWetterdaten(wetterdaten);
-
-        // Assert
-        Assert.False(heizZimmer.HeizungsventilOffen);
+            // Assert
+            StringAssert.Contains(output, "Heizungsventil wird geöffnet");
+            StringAssert.Contains(output, "Heizungsventil wird geschlossen");
+        }
     }
 }
