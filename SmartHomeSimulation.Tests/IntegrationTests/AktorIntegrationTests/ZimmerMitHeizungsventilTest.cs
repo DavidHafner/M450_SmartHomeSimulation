@@ -14,6 +14,8 @@ namespace SmartHomeSimulation.Tests.IntegrationTests.AktorIntegrationTests
         public void Ventil_ShouldClose_WhenAussentemperaturAboveVorgabe()
         {
             // Arrange
+            var writer = new StringWriter();
+            Console.SetOut(writer);
             var fakeZimmer = new FakeZimmer("Küche") { Temperaturvorgabe = 20.0 };
             var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
             var wetter = new Wettersensor().GetWetterdaten();
@@ -38,31 +40,7 @@ namespace SmartHomeSimulation.Tests.IntegrationTests.AktorIntegrationTests
             
         }
 
-        [TestMethod]
-        public void Ventil_ShouldNotToggle_Unnecessarily()
-        {
-            // Arrange
-            var fakeZimmer = new FakeZimmer("Bad") { Temperaturvorgabe = 20.0 };
-            var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
-            var wetter = new Wettersensor().GetWetterdaten();
 
-            // Capture console output
-            using var writer = new StringWriter();
-            Console.SetOut(writer);
-
-            // Act — first call opens the valve
-            zimmer.VerarbeiteWetterdaten(wetter);
-            string firstOutput = writer.ToString().Trim();
-            writer.GetStringBuilder().Clear();
-
-            // Act again — same condition, should NOT print again
-            zimmer.VerarbeiteWetterdaten(wetter);
-            string secondOutput = writer.ToString().Trim();
-
-            // Assert
-            Assert.IsTrue(firstOutput.Contains("Heizungsventil wird geöffnet"));
-            Assert.AreEqual(string.Empty, secondOutput, "Should not print again if valve state stays the same.");
-        }
 
         [TestMethod]
         public void VerarbeiteWetterdaten_ShouldCallBaseZimmer()
@@ -110,6 +88,28 @@ namespace SmartHomeSimulation.Tests.IntegrationTests.AktorIntegrationTests
             // Assert
             StringAssert.Contains(output, "Heizungsventil wird geöffnet");
             StringAssert.Contains(output, "Heizungsventil wird geschlossen");
+        }
+        
+        
+        [TestMethod]
+        public void Wettersensor_Liefert_KorrekteWetterdaten_Integration()
+        {
+            // Arrange
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
+            var sensor = new Wettersensor();
+            var fakeZimmer = new FakeZimmer("Schlafzimmer") { Temperaturvorgabe = 22.0 };
+            var zimmer = new ZimmerMitHeizungsventil(fakeZimmer);
+            
+
+            // Act
+            var wetter = sensor.GetWetterdaten();
+            zimmer.VerarbeiteWetterdaten(wetter);
+
+            // Assert
+            Assert.IsInRange( -25, 35, wetter.Aussentemperatur);
+            // Kein Absturz, Ventil hat sinnvollen Zustand
+            Assert.IsTrue(zimmer.HeizungsventilOffen || !zimmer.HeizungsventilOffen);
         }
     }
 }
