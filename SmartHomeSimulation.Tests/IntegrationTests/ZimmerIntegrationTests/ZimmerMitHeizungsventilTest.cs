@@ -65,12 +65,10 @@ namespace SmartHomeSimulation.Tests.IntegrationTests
             zimmer.VerarbeiteWetterdaten(wetter);
             bool state1 = zimmer.HeizungsventilOffen;
             string firstOutput = writer.ToString().Trim();
+            
+            zimmer.VerarbeiteWetterdaten(wetter);
             bool state2 = zimmer.HeizungsventilOffen;
             writer.GetStringBuilder().Clear();
-
-            // Act again — same condition, should NOT print again
-            // zimmer.VerarbeiteWetterdaten(wetter);
-            string secondOutput = writer.ToString().Trim();
 
             // Assert
             Assert.IsTrue(firstOutput.Contains("Heizungsventil wird geöffnet"));

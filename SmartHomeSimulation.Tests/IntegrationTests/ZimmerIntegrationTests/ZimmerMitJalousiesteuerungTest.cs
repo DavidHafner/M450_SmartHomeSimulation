@@ -104,11 +104,11 @@ namespace SmartHomeSimulation.Tests.IntegrationTests
             zimmer.VerarbeiteWetterdaten(wetter); // first — closes
             bool state1=zimmer.JalousieHeruntergefahren;
             string firstOutput = writer.ToString();
+            
             writer.GetStringBuilder().Clear();
+            zimmer.VerarbeiteWetterdaten(wetter); // second — should not change
             bool state2=zimmer.JalousieHeruntergefahren;
 
-            zimmer.VerarbeiteWetterdaten(wetter); // second — should not change
-            string secondOutput = writer.ToString();
 
             // Assert
             Assert.IsTrue(firstOutput.Contains("Jalousie wird geschlossen"));

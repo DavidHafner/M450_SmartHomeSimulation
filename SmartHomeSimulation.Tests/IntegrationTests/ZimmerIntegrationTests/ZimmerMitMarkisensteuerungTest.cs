@@ -114,12 +114,11 @@ public class ZimmerMitMarkisensteuerungTest
             zimmer.VerarbeiteWetterdaten(wetter);
             bool state1 = zimmer.MarkiseOffen;
             string firstOutput = writer.ToString();
-            writer.GetStringBuilder().Clear();
-            bool state2 = zimmer.MarkiseOffen;
-
             // Act again — same conditions, should not reprint
             zimmer.VerarbeiteWetterdaten(wetter);
-            string secondOutput = writer.ToString();
+            bool state2 = zimmer.MarkiseOffen;
+
+            writer.GetStringBuilder().Clear();
 
             // Assert
             Assert.IsTrue(firstOutput.Contains("Markise wird geöffnet"));
