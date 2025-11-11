@@ -8,11 +8,8 @@ using System.Threading.Tasks;
 namespace M320_SmartHome {
     public class Wohnung {
         public List<Zimmer> zimmerList { get; set; }
-        private IWettersensor wettersensor;
 
-        public Wohnung(IWettersensor wettersensor) {
-            // Wettersensor ggf. in einem ersten Schritt hier generieren. DAnn kann das später beim Testing für den WettersensorMock nach IoC umgebaut werden.
-            this.wettersensor = wettersensor;
+        public Wohnung() {
 
             zimmerList = new List<Zimmer>();
             this.zimmerList.Add(new ZimmerMitHeizungsventil(new ZimmerMitIntelligenterLüftung(new BadWC())));
@@ -36,8 +33,7 @@ namespace M320_SmartHome {
             }
         }
 
-        public void GenerateWetterdaten(int minute = 1) {
-            var wetterdaten = this.wettersensor.GetWetterdaten();
+        public void HandleWetterdaten(int minute, Wetterdaten wetterdaten) {
 
             Console.WriteLine($"\n*** Minute {minute}, Verarbeite Wetterdaten:\n    Aussentemperatur: {wetterdaten.Aussentemperatur}°C\n    Regen: {(wetterdaten.Regen ? "ja" : "nein")}\n    Windgeschwindigkeit: {wetterdaten.Windgeschwindigkeit}km/h");
             foreach(var zimmer in this.zimmerList) {

@@ -4,7 +4,7 @@
             int zeitdauerMinuten = 30;
 
             var wettersensor = new Wettersensor();
-            var wohnung = new Wohnung(wettersensor);
+            var wohnung = new Wohnung();
 
             wohnung.SetTemperaturvorgabe("BadWC", 23);
             wohnung.SetTemperaturvorgabe("Kueche", 22);
@@ -17,8 +17,10 @@
             wohnung.SetPersonenImZimmer("Wohnen", true);
             wohnung.SetPersonenImZimmer("Wintergarten", true);
 
-            for(var i = 0; i<zeitdauerMinuten; i++) {
-                wohnung.GenerateWetterdaten(i+1);
+            for(var i = 0; i<zeitdauerMinuten; i++)
+            {
+                Wetterdaten wetterdaten = wettersensor.GetWetterdaten();
+                wohnung.HandleWetterdaten(i+1,wetterdaten);
             }
         }
     }
