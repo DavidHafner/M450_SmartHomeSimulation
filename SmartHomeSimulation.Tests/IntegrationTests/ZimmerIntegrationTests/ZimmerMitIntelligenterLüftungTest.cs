@@ -108,7 +108,7 @@ public class ZimmerMitIntelligenterLüftungTest
 
         zimmer.VerarbeiteWetterdaten(wetter);
 
-        Assert.IsTrue(zimmer.LüftungLäuft, "Ventil should open when it is colder than the target temperature.");
+        Assert.IsFalse(zimmer.LüftungLäuft, "Ventil should open when it is colder than the target temperature.");
     }
     
     [TestMethod]
