@@ -23,15 +23,29 @@ public class ZimmerMitIntelligenterLüftungTest
             .SetValue(zimmer, true);
         
         zimmer.VerarbeiteWetterdaten(wetter);
-        if (fakeZimmer.Temperaturvorgabe > wetter.Aussentemperatur)
+        
+        if (zimmer.Temperaturvorgabe > wetter.Aussentemperatur)
         {
-            Assert.IsFalse( zimmer.LüftungLäuft, "Ventil should close when it is warmer than the target temperature.");    
+            if (!wetter.Regen)
+            {
+                if (zimmer.PersonenImZimmer)
+                {
+                    Assert.IsTrue( zimmer.LüftungLäuft, "Ventil should open when it is colder than the target temperature.");
+                }
+                else
+                {
+                    Assert.IsFalse( zimmer.LüftungLäuft, "Ventil should close when it is warmer than the target temperature.");    
+                }
+            }
+            else
+            {
+                Assert.IsFalse( zimmer.LüftungLäuft, "Ventil should close when it is warmer than the target temperature.");    
+            }
         }
         else
         {
-            Assert.IsTrue( zimmer.LüftungLäuft, "Ventil should open when it is colder than the target temperature.");
+            Assert.IsFalse( zimmer.LüftungLäuft, "Ventil should close when it is warmer than the target temperature.");    
         }
-
     }
 
 }
